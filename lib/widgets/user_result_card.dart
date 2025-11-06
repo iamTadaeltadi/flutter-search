@@ -41,13 +41,20 @@ class UserResultCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    
-                    Text(
-                      user.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            user.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        _MatchTypeBadge(matchType: result.matchType),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -102,6 +109,58 @@ class UserResultCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MatchTypeBadge extends StatelessWidget {
+  final MatchType matchType;
+
+  const _MatchTypeBadge({required this.matchType});
+
+  String _getLabel() {
+    switch (matchType) {
+      case MatchType.username:
+        return 'Username';
+      case MatchType.name:
+        return 'Name';
+      case MatchType.occupation:
+        return 'Occupation';
+      case MatchType.category:
+        return 'Skill';
+    }
+  }
+
+  Color _getColor() {
+    switch (matchType) {
+      case MatchType.username:
+        return Colors.green;
+      case MatchType.name:
+        return Colors.blue;
+      case MatchType.occupation:
+        return Colors.orange;
+      case MatchType.category:
+        return Colors.purple;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: _getColor().withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _getColor().withOpacity(0.3), width: 1),
+      ),
+      child: Text(
+        _getLabel(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: _getColor(),
         ),
       ),
     );
