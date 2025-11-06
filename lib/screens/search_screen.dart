@@ -1,111 +1,40 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/search_result.dart';
-import '../models/user.dart';
-import '../services/search_service.dart';
-import '../services/data_service.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/user_result_card.dart';
 import '../widgets/category_chip.dart';
+import '../providers/search_providers.dart';
 
-class SearchScreen extends StatefulWidget {
+class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
 
   @override
-  State<SearchScreen> createState() => _SearchScreenState();
+  ConsumerState<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen> {
+class _SearchScreenState extends ConsumerState<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final SearchService _searchService = SearchService(DataService.getSampleUsers());
-  Timer? _debounceTimer;
-
-  List<SearchResult> _allResults = [];
-  List<SearchResult> _usernameResults = [];
-  List<SearchResult> _categoryResults = [];
-  List<String> _categories = [];
-  bool _isSearching = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _searchController.addListener(_onSearchChanged);
-  }
 
   @override
   void dispose() {
-    _debounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
-  void _onSearchChanged() {
-    if (_debounceTimer?.isActive ?? false) {
-      _debounceTimer!.cancel();
-    }
-
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      _performSearch(_searchController.text);
-    });
-  }
-
-  Future<void> _performSearch(String query) async {
-    if (query.trim().isEmpty) {
-      setState(() {
-        _allResults = [];
-        _usernameResults = [];
-        _categoryResults = [];
-        _categories = [];
-        _isSearching = false;
-      });
-      return;
-    }
-
-    setState(() {
-      _isSearching = true;
-    });
-
-    try {
-      final results = await _searchService.search(query);
-
-      final usernameResults = _searchService.filterByMatchType(
-        results,
-        MatchType.username,
-      );
-      final categoryResults = _searchService.filterByMatchType(
-        results,
-        MatchType.category,
-      );
-
-      final categories = _searchService.getCategories(categoryResults);
-
-      setState(() {
-        _allResults = results;
-        _usernameResults = usernameResults;
-        _categoryResults = categoryResults;
-        _categories = categories;
-        _isSearching = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isSearching = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Search error: $e')),
-        );
-      }
-    }
-  }
-
-  /// Handles category selection
-  void _onCategorySelected(String category) {
-    _searchController.text = category;
-    _performSearch(category);
-  }
-
   @override
   Widget build(BuildContext context) {
+    final searchState = ref.watch(searchNotifierProvider);
+    final notifier = ref.read(searchNotifierProvider.notifier);
+
+    // Keep the TextField in sync with provider state
+    if (_searchController.text != searchState.query) {
+      _searchController.text = searchState.query;
+      _searchController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _searchController.text.length),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -114,26 +43,15 @@ class _SearchScreenState extends State<SearchScreen> {
             // Search Bar
             SearchBarWidget(
               controller: _searchController,
-              onChanged: (_) {
-                // Search is handled by controller listener with debouncing
-              },
-              onClear: () {
-                setState(() {
-                  _allResults = [];
-                  _usernameResults = [];
-                  _categoryResults = [];
-                  _categories = [];
-                });
-              },
+              onChanged: notifier.onQueryChanged,
+              onClear: notifier.clear,
             ),
 
             // Search Results
             Expanded(
-              child: _isSearching
-                  ? const Center(
-                      child: CircularProgressIndicator(),
-                    )
-                  : _buildResults(),
+              child: searchState.isSearching
+                  ? const Center(child: CircularProgressIndicator())
+                  : _buildResults(searchState, notifier),
             ),
           ],
         ),
@@ -143,8 +61,8 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   /// Builds the results view
-  Widget _buildResults() {
-    if (_searchController.text.trim().isEmpty) {
+  Widget _buildResults(SearchState state, SearchNotifier notifier) {
+    if (state.query.trim().isEmpty) {
       return const Center(
         child: Text(
           'Start typing to search...',
@@ -156,7 +74,7 @@ class _SearchScreenState extends State<SearchScreen> {
       );
     }
 
-    if (_allResults.isEmpty) {
+    if (state.allResults.isEmpty) {
       return const Center(
         child: Text(
           'No results found',
@@ -173,18 +91,18 @@ class _SearchScreenState extends State<SearchScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Matching Usernames Section
-          if (_usernameResults.isNotEmpty) ...[
+          if (state.usernameResults.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(
-                'Matching Usernames (${_usernameResults.length})',
+                'Matching Usernames (${state.usernameResults.length})',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            ..._usernameResults.map(
+            ...state.usernameResults.map(
               (result) => UserResultCard(
                 result: result,
                 onTap: () {
@@ -195,11 +113,11 @@ class _SearchScreenState extends State<SearchScreen> {
           ],
 
           // Matching Categories Section
-          if (_categories.isNotEmpty) ...[
+          if (state.categories.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(
-                'Matching Categories (${_categories.length})',
+                'Matching Categories (${state.categories.length})',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -209,10 +127,10 @@ class _SearchScreenState extends State<SearchScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Wrap(
-                children: _categories.map(
+                children: state.categories.map(
                   (category) => CategoryChip(
                     category: category,
-                    onTap: () => _onCategorySelected(category),
+                    onTap: () => notifier.onCategorySelected(category),
                   ),
                 ).toList(),
               ),
@@ -221,11 +139,11 @@ class _SearchScreenState extends State<SearchScreen> {
           ],
 
           // Other Results (name, occupation matches)
-          if (_usernameResults.length < _allResults.length) ...[
+          if (state.usernameResults.length < state.allResults.length) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(
-                'Other Results (${_allResults.length - _usernameResults.length})',
+                'Other Results (${state.allResults.length - state.usernameResults.length})',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -233,10 +151,10 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
             ...() {
-              final usernameUserIds = _usernameResults
+              final usernameUserIds = state.usernameResults
                   .map((result) => result.user.id)
                   .toSet();
-              return _allResults
+              return state.allResults
                   .where((r) => !usernameUserIds.contains(r.user.id))
                   .map(
                     (result) => UserResultCard(
