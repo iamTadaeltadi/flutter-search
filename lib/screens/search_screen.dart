@@ -146,25 +146,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (state.usernameResults.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'Matching Usernames (${state.usernameResults.length})',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            ...state.usernameResults.map(
-              (result) => UserResultCard(
-                result: result,
-                onTap: () {},
-              ),
-            ),
-          ],
-
           if (state.categories.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -188,6 +169,25 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ),
             ),
             const SizedBox(height: 16),
+          ],
+
+          if (state.usernameResults.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'Matching Usernames (${state.usernameResults.length})',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            ...state.usernameResults.map(
+              (result) => UserResultCard(
+                result: result,
+                onTap: () {},
+              ),
+            ),
           ],
 
           if (state.usernameResults.length < state.allResults.length) ...[
