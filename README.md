@@ -92,11 +92,3 @@ lib/
 ├── widgets/         # SearchBar, UserCard, CategoryChip
 └── screens/         # SearchScreen, AboutScreen
 ```
-
-## Future Ideas
-
-- Backend API integration
-- Offline caching
-- More filters (rating, location)
-- Search history
-- Pagination for huge result sets
