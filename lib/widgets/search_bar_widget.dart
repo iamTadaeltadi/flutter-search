@@ -52,6 +52,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: TextField(
+        key: const Key('search_text_field'),
         controller: widget.controller,
         onChanged: widget.onChanged,
         autofocus: false,
@@ -63,6 +64,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
           prefixIcon: Icon(Icons.search, color: iconColor),
           suffixIcon: widget.controller.text.isNotEmpty
               ? IconButton(
+                  key: const Key('search_clear_button'),
                   icon: Icon(Icons.cancel, color: iconColor),
                   onPressed: _onClear,
                 )
