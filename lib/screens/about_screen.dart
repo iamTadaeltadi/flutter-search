@@ -35,7 +35,7 @@ class AboutScreen extends ConsumerWidget {
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Text(
-                          'Search by username, name, occupation, or skills. Results are ranked by relevance and categories appear as quick filters. Built with Riverpod, Material 3, and smooth UI states.',
+                          'Discover Pros helps you find professionals by searching their username, name, occupation, or skills. Results are automatically ranked by relevance, and you can quickly filter by categories to find exactly what you\'re looking for.',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ),
