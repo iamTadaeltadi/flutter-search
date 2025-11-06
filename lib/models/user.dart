@@ -19,7 +19,6 @@ class User {
     required this.avatarUrl,
   });
 
-  /// Creates a User from JSON
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'] as String,
@@ -33,7 +32,6 @@ class User {
     );
   }
 
-  /// Converts User to JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,

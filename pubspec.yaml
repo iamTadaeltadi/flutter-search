@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.6
   flutter_riverpod: ^2.5.1
+  shimmer: ^3.0.0
+  lottie: ^2.7.0
 
 dev_dependencies:
   flutter_test:
@@ -19,5 +21,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/animations/
 
 

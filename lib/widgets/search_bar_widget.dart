@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-
-/// Custom search bar widget with clear button
 class SearchBarWidget extends StatefulWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
@@ -42,23 +40,30 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final iconColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    final hintColor = isDark ? Colors.grey[400] : Colors.grey[600];
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.grey[200],
+        color: isDark ? Colors.grey[900] : Colors.grey[200],
         borderRadius: BorderRadius.circular(12),
       ),
       child: TextField(
         controller: widget.controller,
         onChanged: widget.onChanged,
         autofocus: false,
+        style: TextStyle(color: textColor),
+        cursorColor: textColor,
         decoration: InputDecoration(
           hintText: 'Search by username, name, or occupation...',
-          hintStyle: TextStyle(color: Colors.grey[600]),
-          prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+          hintStyle: TextStyle(color: hintColor),
+          prefixIcon: Icon(Icons.search, color: iconColor),
           suffixIcon: widget.controller.text.isNotEmpty
               ? IconButton(
-                  icon: Icon(Icons.cancel, color: Colors.grey[600]),
+                  icon: Icon(Icons.cancel, color: iconColor),
                   onPressed: _onClear,
                 )
               : null,

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/search_result.dart';
-
-/// Card widget displaying a user search result
 class UserResultCard extends StatelessWidget {
   final SearchResult result;
   final VoidCallback? onTap;
@@ -29,7 +27,6 @@ class UserResultCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              // Profile Picture
               CircleAvatar(
                 radius: 30,
                 backgroundColor: Colors.grey[300],
@@ -40,12 +37,11 @@ class UserResultCard extends StatelessWidget {
                     : null,
               ),
               const SizedBox(width: 16),
-              // User Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Name
+                    
                     Text(
                       user.name,
                       style: const TextStyle(
@@ -54,7 +50,6 @@ class UserResultCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    // Username
                     Text(
                       '@${user.username}',
                       style: TextStyle(
@@ -63,7 +58,6 @@ class UserResultCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    // Occupation and Skills
                     Row(
                       children: [
                         Icon(
@@ -86,7 +80,6 @@ class UserResultCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    // Rating
                     Row(
                       children: [
                         Icon(
