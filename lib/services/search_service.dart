@@ -4,10 +4,10 @@ import '../models/search_result.dart';
 
 class SearchService {
   final List<User> _users;
-  final Map<String, List<int>> _usernameIndex;
-  final Map<String, List<int>> _nameIndex;
-  final Map<String, List<int>> _occupationIndex;
-  final Map<String, List<int>> _categoryIndex;
+  final Map<String, Set<int>> _usernameIndex;
+  final Map<String, Set<int>> _nameIndex;
+  final Map<String, Set<int>> _occupationIndex;
+  final Map<String, Set<int>> _categoryIndex;
 
   SearchService(List<User> users)
       : _users = users,
@@ -48,20 +48,16 @@ class SearchService {
       for (final skill in user.skills) {
         final skillLower = skill.toLowerCase();
         _addToIndex(_categoryIndex, skillLower, i);
+        _indexPartialMatches(_categoryIndex, skillLower, i);
       }
     }
   }
 
-  void _addToIndex(Map<String, List<int>> index, String key, int userId) {
-    if (!index.containsKey(key)) {
-      index[key] = [];
-    }
-    if (!index[key]!.contains(userId)) {
-      index[key]!.add(userId);
-    }
+  void _addToIndex(Map<String, Set<int>> index, String key, int userId) {
+    index.putIfAbsent(key, () => <int>{}).add(userId);
   }
 
-  void _indexPartialMatches(Map<String, List<int>> index, String text, int userId) {
+  void _indexPartialMatches(Map<String, Set<int>> index, String text, int userId) {
     for (int len = 2; len <= text.length; len++) {
       final prefix = text.substring(0, len);
       _addToIndex(index, prefix, userId);
@@ -154,22 +150,24 @@ class SearchService {
     return results;
   }
 
-  Set<int> _searchIndex(Map<String, List<int>> index, String query) {
+  Set<int> _searchIndex(Map<String, Set<int>> index, String query) {
     final Set<int> results = {};
     
+    // O(1) direct lookup for exact/prefix matches - FIXED O(n) bug
+    // Since we index all prefixes, the query itself is in the index if it matches
     if (index.containsKey(query)) {
       results.addAll(index[query]!);
     }
 
-    for (final key in index.keys) {
-      if (key.startsWith(query) || query.startsWith(key)) {
-        results.addAll(index[key]!);
-      }
-    }
-
-    for (final key in index.keys) {
-      if (key.contains(query) || query.contains(key)) {
-        results.addAll(index[key]!);
+    // For substring matches where query appears in the middle of a longer key
+    // (e.g., searching "penter" in "carpenter"), we need to check longer keys
+    // This is still O(n) but optimized: only checks keys longer than query
+    // and limited to queries of length 3+ to avoid too many results
+    if (query.length >= 3) {
+      for (final key in index.keys) {
+        if (key.length > query.length && key.contains(query) && !key.startsWith(query)) {
+          results.addAll(index[key]!);
+        }
       }
     }
 
