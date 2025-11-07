@@ -85,17 +85,6 @@ class SearchService {
     return results;
   }
 
-  List<String> getCategories(List<SearchResult> results) {
-    final Set<String> categories = {};
-    for (final result in results) {
-      if (result.matchType == MatchType.category) {
-        categories.add(result.user.occupation);
-      }
-      categories.addAll(result.user.skills);
-    }
-    return categories.toList()..sort();
-  }
-
   List<SearchResult> filterByMatchType(
     List<SearchResult> results,
     MatchType matchType,

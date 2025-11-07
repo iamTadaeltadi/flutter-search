@@ -39,14 +39,13 @@ void main() {
       expect(usernameOnly.every((r) => r.matchType == MatchType.username), isTrue);
     });
 
-    test('getCategories returns unique sorted list', () async {
-      final all = await service.search('Automotive');
-      final categoryResults = service.filterByMatchType(all, MatchType.category);
-      final categories = service.getCategories(categoryResults);
+    test('getCategorySuggestions returns unique sorted list', () {
+      final categories = service.getCategorySuggestions('car');
       expect(categories, isNotEmpty);
       final sorted = [...categories]..sort();
       expect(categories, sorted);
       expect(categories.toSet().length, categories.length);
+      expect(categories, contains('Car Mechanic'));
     });
   });
 }
