@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import '../models/user.dart';
 import '../models/search_result.dart';
 
@@ -69,147 +70,19 @@ class SearchService {
       return [];
     }
 
-    final queryLower = query.trim().toLowerCase();
-    final Set<int> matchedUserIds = {};
-    final Map<int, SearchResult> resultMap = {};
+    // isolate to prevent UI freezing
+    final searchData = _SearchData(
+      users: _users,
+      usernameIndex: _usernameIndex,
+      nameIndex: _nameIndex,
+      occupationIndex: _occupationIndex,
+      categoryIndex: _categoryIndex,
+      query: query.trim().toLowerCase(),
+    );
 
-    final usernameMatches = _searchIndex(_usernameIndex, queryLower);
-    for (final userId in usernameMatches) {
-      if (!resultMap.containsKey(userId)) {
-        final user = _users[userId];
-        final score = _calculateRelevanceScore(
-          user.username.toLowerCase(),
-          queryLower,
-          MatchType.username,
-        );
-        resultMap[userId] = SearchResult(
-          user: user,
-          matchType: MatchType.username,
-          relevanceScore: score,
-        );
-      }
-      matchedUserIds.add(userId);
-    }
-
-    final nameMatches = _searchIndex(_nameIndex, queryLower);
-    for (final userId in nameMatches) {
-      if (!resultMap.containsKey(userId)) {
-        final user = _users[userId];
-        final score = _calculateRelevanceScore(
-          user.name.toLowerCase(),
-          queryLower,
-          MatchType.name,
-        );
-        resultMap[userId] = SearchResult(
-          user: user,
-          matchType: MatchType.name,
-          relevanceScore: score,
-        );
-      }
-      matchedUserIds.add(userId);
-    }
-
-    final occupationMatches = _searchIndex(_occupationIndex, queryLower);
-    for (final userId in occupationMatches) {
-      if (!resultMap.containsKey(userId)) {
-        final user = _users[userId];
-        final score = _calculateRelevanceScore(
-          user.occupation.toLowerCase(),
-          queryLower,
-          MatchType.occupation,
-        );
-        resultMap[userId] = SearchResult(
-          user: user,
-          matchType: MatchType.occupation,
-          relevanceScore: score,
-        );
-      }
-      matchedUserIds.add(userId);
-    }
-
-    final categoryMatches = _searchIndex(_categoryIndex, queryLower);
-    for (final userId in categoryMatches) {
-      if (!resultMap.containsKey(userId)) {
-        final user = _users[userId];
-        final score = _calculateRelevanceScore(
-          user.occupation.toLowerCase(),
-          queryLower,
-          MatchType.category,
-        );
-        resultMap[userId] = SearchResult(
-          user: user,
-          matchType: MatchType.category,
-          relevanceScore: score,
-        );
-      }
-    }
-
-    final results = resultMap.values.toList();
-    results.sort(SearchResult.compareByRelevance);
-
+    // Run search in background isolate
+    final results = await compute(_performSearchInIsolate, searchData);
     return results;
-  }
-
-  Set<int> _searchIndex(Map<String, Set<int>> index, String query) {
-    final Set<int> results = {};
-    
-    // O(1) direct lookup for exact/prefix matches - FIXED O(n) bug
-    // Since we index all prefixes, the query itself is in the index if it matches
-    if (index.containsKey(query)) {
-      results.addAll(index[query]!);
-    }
-
-    // For substring matches where query appears in the middle of a longer key
-    // (e.g., searching "penter" in "carpenter"), we need to check longer keys
-    // This is still O(n) but optimized: only checks keys longer than query
-    // and limited to queries of length 3+ to avoid too many results
-    if (query.length >= 3) {
-      for (final key in index.keys) {
-        if (key.length > query.length && key.contains(query) && !key.startsWith(query)) {
-          results.addAll(index[key]!);
-        }
-      }
-    }
-
-    return results;
-  }
-
-  double _calculateRelevanceScore(
-    String text,
-    String query,
-    MatchType matchType,
-  ) {
-    double score = 0.0;
-
-    switch (matchType) {
-      case MatchType.username:
-        score = 100.0;
-        break;
-      case MatchType.name:
-        score = 80.0;
-        break;
-      case MatchType.occupation:
-        score = 60.0;
-        break;
-      case MatchType.category:
-        score = 40.0;
-        break;
-    }
-
-    if (text == query) {
-      score += 50.0;
-    }
-    else if (text.startsWith(query)) {
-      score += 30.0;
-    }
-    else if (text.contains(query)) {
-      score += 10.0;
-    }
-
-    final lengthDiff = (text.length - query.length).abs();
-    score -= lengthDiff * 0.5;
-
-    return score;
   }
 
   List<String> getCategories(List<SearchResult> results) {
@@ -229,6 +102,186 @@ class SearchService {
   ) {
     return results.where((r) => r.matchType == matchType).toList();
   }
+
+  List<String> getCategorySuggestions(String query) {
+    final normalized = query.trim().toLowerCase();
+    if (normalized.length < 2) {
+      return const [];
+    }
+
+    final matches = _searchIndexShared(_categoryIndex, normalized);
+    final Set<String> categories = {};
+    for (final userId in matches) {
+      final user = _users[userId];
+      categories.add(user.occupation);
+      categories.addAll(user.skills);
+    }
+
+    final list = categories.toList()..sort();
+    return list;
+  }
+}
+
+class _SearchData {
+  final List<User> users;
+  final Map<String, Set<int>> usernameIndex;
+  final Map<String, Set<int>> nameIndex;
+  final Map<String, Set<int>> occupationIndex;
+  final Map<String, Set<int>> categoryIndex;
+  final String query;
+
+  _SearchData({
+    required this.users,
+    required this.usernameIndex,
+    required this.nameIndex,
+    required this.occupationIndex,
+    required this.categoryIndex,
+    required this.query,
+  });
+}
+
+List<SearchResult> _performSearchInIsolate(_SearchData data) {
+  final queryLower = data.query;
+  final Set<int> matchedUserIds = {};
+  final Map<int, SearchResult> resultMap = {};
+
+  // Search username index
+  final usernameMatches = _searchIndexShared(data.usernameIndex, queryLower);
+  for (final userId in usernameMatches) {
+    if (!resultMap.containsKey(userId)) {
+      final user = data.users[userId];
+      final score = _calculateRelevanceScoreInIsolate(
+        user.username.toLowerCase(),
+        queryLower,
+        MatchType.username,
+      );
+      resultMap[userId] = SearchResult(
+        user: user,
+        matchType: MatchType.username,
+        relevanceScore: score,
+      );
+    }
+    matchedUserIds.add(userId);
+  }
+
+  // Search name index
+  final nameMatches = _searchIndexShared(data.nameIndex, queryLower);
+  for (final userId in nameMatches) {
+    if (!resultMap.containsKey(userId)) {
+      final user = data.users[userId];
+      final score = _calculateRelevanceScoreInIsolate(
+        user.name.toLowerCase(),
+        queryLower,
+        MatchType.name,
+      );
+      resultMap[userId] = SearchResult(
+        user: user,
+        matchType: MatchType.name,
+        relevanceScore: score,
+      );
+    }
+    matchedUserIds.add(userId);
+  }
+
+  // Search occupation index
+  final occupationMatches = _searchIndexShared(data.occupationIndex, queryLower);
+  for (final userId in occupationMatches) {
+    if (!resultMap.containsKey(userId)) {
+      final user = data.users[userId];
+      final score = _calculateRelevanceScoreInIsolate(
+        user.occupation.toLowerCase(),
+        queryLower,
+        MatchType.occupation,
+      );
+      resultMap[userId] = SearchResult(
+        user: user,
+        matchType: MatchType.occupation,
+        relevanceScore: score,
+      );
+    }
+    matchedUserIds.add(userId);
+  }
+
+  // Search category index
+  final categoryMatches = _searchIndexShared(data.categoryIndex, queryLower);
+  for (final userId in categoryMatches) {
+    if (!resultMap.containsKey(userId)) {
+      final user = data.users[userId];
+      final score = _calculateRelevanceScoreInIsolate(
+        user.occupation.toLowerCase(),
+        queryLower,
+        MatchType.category,
+      );
+      resultMap[userId] = SearchResult(
+        user: user,
+        matchType: MatchType.category,
+        relevanceScore: score,
+      );
+    }
+  }
+
+  final results = resultMap.values.toList();
+  results.sort(SearchResult.compareByRelevance);
+
+  return results;
+}
+
+// fun shared by main and isolate execution)
+Set<int> _searchIndexShared(Map<String, Set<int>> index, String query) {
+  final Set<int> results = {};
+  
+  // O(1) direct lookup for exact/prefix matches
+  if (index.containsKey(query)) {
+    results.addAll(index[query]!);
+  }
+
+  if (query.length >= 2) {
+    for (final key in index.keys) {
+      if (key.length > query.length && key.contains(query)) {
+        results.addAll(index[key]!);
+      }
+    }
+  }
+
+  return results;
+}
+
+double _calculateRelevanceScoreInIsolate(
+  String text,
+  String query,
+  MatchType matchType,
+) {
+  double score = 0.0;
+
+  switch (matchType) {
+    case MatchType.username:
+      score = 100.0;
+      break;
+    case MatchType.name:
+      score = 80.0;
+      break;
+    case MatchType.occupation:
+      score = 60.0;
+      break;
+    case MatchType.category:
+      score = 40.0;
+      break;
+  }
+
+  if (text == query) {
+    score += 50.0;
+  }
+  else if (text.startsWith(query)) {
+    score += 30.0;
+  }
+  else if (text.contains(query)) {
+    score += 10.0;
+  }
+
+  final lengthDiff = (text.length - query.length).abs();
+  score -= lengthDiff * 0.5;
+
+  return score;
 }
 
 

@@ -87,7 +87,7 @@ class SearchNotifier extends StateNotifier<AsyncValue<SearchState>> {
         results,
         MatchType.category,
       );
-      final categories = _searchService.getCategories(categoryResults);
+      final categories = _searchService.getCategorySuggestions(query);
 
       state = AsyncValue.data(
         SearchState(
