@@ -43,6 +43,8 @@ Instead of checking every user on every search, we build indexes upfront:
 
 When you search "bob", we just look it up in the hash map. Instant results.
 
+Heavy searches run in a background isolate (via `compute`) so the UI stays smooth even when the dataset scales.
+
 Results are scored by relevance:
 - Username matches score highest (100 points)
 - Name matches next (80 points)
